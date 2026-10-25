@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="mr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RK Jewellery Business Suite</title>
+<meta name="theme-color" content="#0f172a">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Noto+Sans+Devanagari:wght@400;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<style>
+  body{font-family:'Inter','Noto Sans Devanagari',system-ui,sans-serif;background:#0b1120;color:#e2e8f0}
+  .serif{font-family:'Cormorant Garamond',Georgia,serif}
+  .gold-text{background:linear-gradient(90deg,#F59E0B,#D4AF37 50%,#F5D77A);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .panel{background:#18181b;border:1px solid rgba(212,175,55,.22);border-radius:6px}
+  .field{background:#0f172a;border:1px solid #334155;border-radius:4px;color:#f1f5f9;padding:.55rem .75rem;width:100%;outline:none}
+  .field:focus,.chip:focus-visible,button:focus-visible{outline:2px solid #F59E0B;outline-offset:1px}
+  .chip{border:1px solid #475569;border-radius:999px;padding:.35rem .9rem;font-size:.85rem;color:#cbd5e1;background:transparent;cursor:pointer}
+  .chip.on{background:#D4AF37;border-color:#D4AF37;color:#1c1917;font-weight:600}
+  .btn{display:inline-flex;align-items:center;gap:.5rem;padding:.55rem 1rem;border-radius:4px;font-weight:600;font-size:.9rem;cursor:pointer;border:1px solid transparent}
+  .btn-gold{background:linear-gradient(180deg,#F5B83D,#D4AF37);color:#1c1917}
+  .btn-ghost{border-color:#D4AF37;color:#F5D77A;background:transparent}
+  .btn:hover{filter:brightness(1.1)}
+  .hidden{display:none!important}
+  /* invoice */
+  #invoice{background:#fff;color:#111827;font-size:12.5px;aspect-ratio:210/297;padding:0;box-shadow:0 10px 40px rgba(0,0,0,.5);overflow:hidden}
+  #invoice.pdf-mode{width:794px;box-shadow:none}
+  .iv{background:transparent;border:0;border-bottom:1px dashed #cbd5e1;color:#111827;width:100%;font:inherit;padding:2px 0;outline:none;min-width:0}
+  .iv:focus{border-bottom-color:#D97706}
+  .iv::placeholder{color:#9ca3af}
+  #invoice select.iv{appearance:none;-webkit-appearance:none}
+  #invoice th{background:#1f2937;color:#F5D77A;font-weight:600;text-align:left;padding:6px 8px;font-size:11.5px}
+  #invoice td{border-bottom:1px solid #e5e7eb;padding:4px 6px;vertical-align:middle}
+  .box{border:1px solid #d1d5db;padding:10px;border-radius:2px}
+  .box h4{font-weight:700;color:#92400e;margin-bottom:6px;font-size:11.5px}
+  #toast{position:fixed;bottom:24px;left:50%;transform:translate(-50%,20px);background:#D4AF37;color:#1c1917;padding:.6rem 1.2rem;border-radius:4px;font-weight:600;opacity:0;pointer-events:none;transition:.25s;z-index:50}
+  #toast.show{opacity:1;transform:translate(-50%,0)}
+  @media print{
+    @page{size:A4;margin:0}
+    body *{visibility:hidden}
+    #invoice,#invoice *{visibility:visible}
+    #invoice{position:absolute;left:0;top:0;width:210mm;height:297mm;box-shadow:none;aspect-ratio:auto}
+    .noprint{display:none!important}
+  }
+</style>
+</head>
+<body class="min-h-screen">
+
+<header class="noprint sticky top-0 z-40 bg-slate-900/95 backdrop-blur border-b border-amber-500/30">
+  <div class="max-w-[1500px] mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+    <div class="flex items-center gap-3">
+      <span class="text-2xl">💎</span>
+      <h1 class="serif text-3xl font-bold gold-text tracking-wide">RK JEWELLERY</h1>
+    </div>
+    <div class="flex items-center gap-4">
+      <div class="text-right text-sm text-slate-300 leading-tight"><div id="clockDate"></div><div id="clockTime" class="text-amber-400 font-semibold"></div></div>
+      <button id="installBtn" class="btn btn-gold"><i class="fa-solid fa-download"></i> Install App to Desktop</button>
+    </div>
+  </div>
+</header>
+
+<main class="max-w-[1500px] mx-auto p-4 grid lg:grid-cols-2 gap-6">
+
+  <!-- LEFT -->
+  <section class="noprint space-y-6">
+    <div class="panel p-5">
+      <h2 class="serif text-2xl text-amber-400 mb-3"><i class="fa-solid fa-wand-magic-sparkles mr-2"></i>Occasion &amp; campaign</h2>
+      <div id="occ" class="flex flex-wrap gap-2">
+        <button class="chip on" data-o="normal">Normal</button>
+        <button class="chip" data-o="diwali">🪔 Diwali special offer</button>
+        <button class="chip" data-o="off">Occasion off</button>
+        <button class="chip" data-o="custom">Custom offer</button>
+      </div>
+      <div id="occExtra" class="grid sm:grid-cols-2 gap-3 mt-4 hidden">
+        <div id="customWrap" class="hidden"><label class="text-sm text-slate-400" for="customName">Festival / event name</label><input id="customName" class="field mt-1" placeholder="Gudi Padwa, Akshaya Tritiya, Wedding Season"></div>
+        <div id="discWrap"><label class="text-sm text-slate-400" for="festPct">Festive discount (%)</label><input id="festPct" type="number" min="0" max="90" step="any" value="10" class="field mt-1"></div>
+      </div>
+    </div>
+    <div class="panel p-5">
+      <h2 class="serif text-2xl text-amber-400 mb-4"><i class="fa-solid fa-calculator mr-2"></i>Smart pricing &amp; margin</h2>
+      <label class="text-sm text-slate-400" for="cost">Base / cost price (₹)</label>
+      <input id="cost" type="number" min="0" step="any" placeholder="e.g. 450" class="field mt-1 mb-4">
+      <div class="text-sm text-slate-400 mb-2">Profit margin</div>
+      <div id="chips" class="flex flex-wrap gap-2 items-center">
+        <button class="chip" data-m="15">15%</button>
+        <button class="chip on" data-m="20">20%</button>
+        <button class="chip" data-m="30">30%</button>
+        <button class="chip" data-m="50">50%</button>
+        <button class="chip" data-m="100">100%</button>
+        <input id="customM" type="number" min="0" step="any" placeholder="Custom %" aria-label="Custom margin percent" class="field !w-28 !py-1.5">
+      </div>
+      <label class="flex items-center gap-2 mt-4 text-sm text-slate-300 cursor-pointer"><input id="gstBuf" type="checkbox" class="accent-amber-500"> Include 3% GST buffer in costs</label>
+      <div class="grid sm:grid-cols-3 gap-3 mt-5">
+        <div class="border border-amber-500/40 p-3 rounded"><div class="text-xs text-slate-400">Recommended selling price</div><div id="kSell" class="serif text-3xl text-amber-400">₹0.00</div><div id="kOffer" class="hidden text-xs text-amber-300 mt-1"></div></div>
+        <div class="border border-slate-700 p-3 rounded"><div class="text-xs text-slate-400">Gross profit</div><div id="kGross" class="serif text-3xl text-emerald-400">₹0.00</div></div>
+        <div class="border border-slate-700 p-3 rounded"><div class="text-xs text-slate-400">Net profit</div><div id="kNet" class="serif text-3xl text-emerald-400">₹0.00</div></div>
+      </div>
+      <div id="breakdown" class="text-sm text-slate-400 mt-4 border-t border-slate-700 pt-3 space-y-0.5"></div>
+      <button id="syncBtn" class="btn btn-gold mt-4"><i class="fa-solid fa-arrows-rotate"></i> Sync &amp; apply to invoice</button>
+    </div>
+
+    <div class="panel p-5">
+      <h2 class="serif text-2xl text-amber-400 mb-3"><i class="fa-brands fa-whatsapp mr-2"></i>Marathi caption generator</h2>
+      <div class="flex flex-wrap items-center gap-3 mb-3 text-sm">
+        <label for="destState" class="text-slate-400">Delivery to</label>
+        <select id="destState" class="field !w-auto"></select>
+        <span id="freeBadge" class="px-2 py-0.5 rounded text-xs font-semibold"></span>
+      </div>
+      <p id="capHint" class="text-xs text-slate-500 mb-2"></p>
+      <textarea id="caption" rows="20" class="field leading-relaxed" aria-label="Marathi caption"></textarea>
+      <div class="flex flex-wrap gap-3 mt-3">
+        <button id="capReset" class="btn btn-ghost hidden"><i class="fa-solid fa-rotate"></i> Re-sync caption</button>
+        <button id="copyBtn" class="btn btn-ghost"><i class="fa-regular fa-copy"></i> Copy to clipboard</button>
+        <button id="waBtn" class="btn btn-gold"><i class="fa-brands fa-whatsapp"></i> Share on WhatsApp</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- RIGHT -->
+  <section class="space-y-6 min-w-0">
+    <div class="overflow-x-auto">
+    <div id="invoice" class="mx-auto min-w-[640px] max-w-[794px] flex flex-col">
+      <div style="background:linear-gradient(90deg,#92400e,#D4AF37,#92400e);color:#1c1917" class="text-center py-3">
+        <div class="serif text-2xl font-bold tracking-widest">PURCHASE ORDER / BILL OF SUPPLY</div>
+        <div id="occBanner" class="hidden text-sm font-semibold mt-0.5"></div>
+      </div>
+      <div class="p-6 flex-1 flex flex-col gap-4">
+        <div class="flex justify-between gap-6">
+          <div class="w-1/2"><label class="text-gray-500">Invoice no.</label><input id="invNo" class="iv"></div>
+          <div class="w-1/2"><label class="text-gray-500">Date</label><input id="invDate" type="date" class="iv"></div>
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          <div class="box">
+            <h4>SELLER</h4>
+            <div class="serif text-xl font-bold">RK JEWELLERY</div>
+            <input class="iv" value="Shirpur, Maharashtra" id="sAddr" aria-label="Seller address">
+            <div class="flex gap-1 mt-1">Contact: <input class="iv" id="sPhone" value="+91-XXXXX XXXXX" aria-label="Seller contact"></div>
+            <div class="flex gap-1 mt-1">GSTIN: <input class="iv" id="sGst" placeholder="Enter GSTIN" aria-label="GSTIN"></div>
+          </div>
+          <div class="box">
+            <h4>BUYER</h4>
+            <input class="iv mb-1" id="bName" placeholder="Customer name" aria-label="Customer name">
+            <input class="iv mb-1" id="bPhone" placeholder="Phone" aria-label="Phone">
+            <input class="iv mb-1" id="bAddr" placeholder="Shipping address" aria-label="Shipping address">
+            <div class="flex gap-2 mb-1"><input class="iv" id="bCity" placeholder="City" aria-label="City"><input class="iv !w-24" id="bPin" placeholder="PIN" maxlength="6" inputmode="numeric" aria-label="PIN code"></div>
+            <select class="iv" id="bState" aria-label="State"></select>
+          </div>
+        </div>
+
+        <table class="w-full border-collapse">
+          <thead><tr><th>Item name / description</th><th style="width:70px">HSN</th><th style="width:50px">Qty</th><th style="width:90px">Unit price (₹)</th><th style="width:90px">Amount (₹)</th><th class="noprint" data-noexport style="width:30px"></th></tr></thead>
+          <tbody id="rows"></tbody>
+        </table>
+        <button id="addRow" class="noprint btn btn-ghost !text-amber-700 !border-amber-700 self-start !py-1.5" data-noexport><i class="fa-solid fa-plus"></i> Add item</button>
+
+        <div class="flex justify-between gap-6 mt-auto">
+          <div class="w-1/2 text-gray-600">
+            <label class="flex items-center gap-2 mb-2 cursor-pointer"><input type="checkbox" id="gstOn" class="accent-amber-600"> Add 3% jewellery GST</label>
+            <div class="font-bold text-gray-800">Terms &amp; conditions</div>
+            <ol class="list-decimal ml-4 text-[11px] leading-snug">
+              <li>Goods once sold will not be taken back.</li>
+              <li>Free shipping within Maharashtra; ₹100 flat elsewhere.</li>
+              <li>Payment is due in full before dispatch.</li>
+              <li>Subject to Shirpur jurisdiction.</li>
+            </ol>
+          </div>
+          <table class="w-1/2 self-start text-[12.5px]">
+            <tr><td class="!border-0">Subtotal</td><td class="!border-0 text-right" id="tSub"></td></tr>
+            <tr><td class="!border-0">Shipping <span id="shipNote" class="text-gray-400 text-[10px]"></span></td><td class="!border-0 text-right" id="tShip"></td></tr>
+            <tr id="rFest" style="display:none"><td class="!border-0" id="lFest"></td><td class="!border-0 text-right text-emerald-700" id="tFest"></td></tr>
+            <tr><td class="!border-0">Discount (₹)</td><td class="!border-0"><input id="disc" type="number" min="0" step="any" class="iv text-right" value="0" aria-label="Discount"></td></tr>
+            <tr><td class="!border-0">GST 3%</td><td class="!border-0 text-right" id="tTax"></td></tr>
+            <tr style="background:#1f2937;color:#F5D77A"><td class="font-bold !border-0">GRAND TOTAL</td><td class="font-bold text-right !border-0" id="tGrand"></td></tr>
+          </table>
+        </div>
+        <div class="flex justify-between items-end pt-2">
+          <div class="text-[11px] text-gray-500">Thank you for choosing RK Jewellery.</div>
+          <div class="text-center"><div style="width:190px;height:70px;border:1px dashed #9ca3af"></div><div class="text-[11px] mt-1 font-semibold">Authorized signatory</div></div>
+        </div>
+      </div>
+    </div>
+    </div>
+
+    <div class="panel p-5 noprint">
+      <h2 class="serif text-2xl text-amber-400 mb-3"><i class="fa-solid fa-file-export mr-2"></i>Export station</h2>
+      <div class="flex flex-wrap gap-3">
+        <button id="pdfBtn" class="btn btn-gold"><i class="fa-solid fa-file-pdf"></i> PDF (A4)</button>
+        <button id="printBtn" class="btn btn-ghost"><i class="fa-solid fa-print"></i> Print</button>
+        <button id="xlsBtn" class="btn btn-ghost"><i class="fa-solid fa-file-excel"></i> Excel (.xlsx)</button>
+        <button id="docBtn" class="btn btn-ghost"><i class="fa-solid fa-file-word"></i> Word (.doc)</button>
+        <button id="swBtn" class="btn btn-ghost" title="Save next to this HTML file to enable offline use"><i class="fa-solid fa-cloud-arrow-down"></i> Offline file (sw.js)</button>
+      </div>
+    </div>
+  </section>
+</main>
+<div id="toast" role="status"></div>
+
+<script>
+(function(){
+'use strict';
+const $ = id => document.getElementById(id);
+const esc = s => String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const money = n => '₹' + (Number(n)||0).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});
+const priceTxt = n => (Number(n)||0).toLocaleString('en-IN',{maximumFractionDigits:2});
+let toastT;
+function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('show'),2400);}
+
+/* ---------- PWA ---------- */
+const ICON = 'data:image/svg+xml,'+encodeURIComponent(
+'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#F5D77A"/><stop offset="1" stop-color="#B7791F"/></linearGradient></defs>'+
+'<rect width="512" height="512" rx="96" fill="#0f172a"/><rect x="18" y="18" width="476" height="476" rx="80" fill="none" stroke="url(#g)" stroke-width="6"/>'+
+'<path d="M96 292 L120 140 L204 210 L256 110 L308 210 L392 140 L416 292 Z" fill="url(#g)"/>'+
+'<rect x="96" y="304" width="320" height="26" rx="8" fill="url(#g)"/>'+
+'<circle cx="120" cy="132" r="14" fill="#F5D77A"/><circle cx="392" cy="132" r="14" fill="#F5D77A"/><circle cx="256" cy="98" r="16" fill="#F5D77A"/>'+
+'<path d="M256 232 L292 262 L256 296 L220 262 Z" fill="#0f172a"/>'+
+'<text x="256" y="428" text-anchor="middle" font-family="Georgia,serif" font-weight="700" font-size="92" fill="url(#g)">RK</text></svg>');
+try{
+  const manifest = {name:'RK Jewellery Business Suite',short_name:'RK Jewellery',display:'standalone',
+    start_url:location.href.split('#')[0],scope:location.href.split('#')[0].replace(/[^\/]*$/,''),
+    theme_color:'#0f172a',background_color:'#d97706',
+    icons:[{src:ICON,sizes:'any',type:'image/svg+xml',purpose:'any'}]};
+  const l=document.createElement('link');l.rel='manifest';
+  l.href=URL.createObjectURL(new Blob([JSON.stringify(manifest)],{type:'application/manifest+json'}));
+  document.head.appendChild(l);
+  const ic=document.createElement('link');ic.rel='icon';ic.type='image/svg+xml';ic.href=ICON;document.head.appendChild(ic);
+  const ai=document.createElement('link');ai.rel='apple-touch-icon';ai.href=ICON;document.head.appendChild(ai);
+}catch(e){console.warn('Manifest setup failed',e);}
+
+// Browsers block service workers from blob/data URLs, so this looks for a sw.js saved beside this file.
+if('serviceWorker' in navigator && /^https?:$/.test(location.protocol)){
+  navigator.serviceWorker.register('sw.js').catch(()=>{});
+}
+let deferred=null;
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferred=e;});
+window.addEventListener('appinstalled',()=>{deferred=null;toast('RK Jewellery installed');});
+$('installBtn').onclick=async()=>{
+  if(deferred){deferred.prompt();try{await deferred.userChoice;}catch(e){}deferred=null;}
+  else if(window.matchMedia('(display-mode: standalone)').matches){toast('Already running as an installed app');}
+  else{toast('Open from https or localhost, then use browser menu → Install app');}
+};
+
+/* ---------- Clock ---------- */
+function tick(){const d=new Date();
+  $('clockDate').textContent=d.toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  $('clockTime').textContent=d.toLocaleTimeString('en-IN');}
+tick();setInterval(tick,1000);
+
+/* ---------- Pricing ---------- */
+let margin=20;
+const STATES=['Andaman and Nicobar Islands','Andhra Pradesh','Arunachal Pradesh','Assam','Bihar','Chandigarh','Chhattisgarh','Dadra and Nagar Haveli and Daman and Diu','Delhi','Goa','Gujarat','Haryana','Himachal Pradesh','Jammu and Kashmir','Jharkhand','Karnataka','Kerala','Ladakh','Lakshadweep','Madhya Pradesh','Maharashtra','Manipur','Meghalaya','Mizoram','Nagaland','Odisha','Puducherry','Punjab','Rajasthan','Sikkim','Tamil Nadu','Telangana','Tripura','Uttar Pradesh','Uttarakhand','West Bengal'];
+let calc={sell:0,offer:0}, occ='normal', capDirty=false;
+function festPct(){return (occ==='diwali'||occ==='custom')?Math.min(Math.max(parseFloat($('festPct').value)||0,0),90):0;}
+function pricing(){
+  const cost=parseFloat($('cost').value)||0, sell=cost*(1+margin/100), pct=festPct(), offer=sell*(1-pct/100), gross=offer-cost;
+  const gst=$('gstBuf').checked?offer*0.03:0, net=gross-80-40-gst;
+  calc.sell=sell;calc.offer=offer;
+  $('kSell').textContent=money(sell);$('kGross').textContent=money(gross);
+  $('kNet').textContent=money(net);$('kNet').style.color=net<0?'#f87171':'';
+  const ko=$('kOffer');ko.classList.toggle('hidden',!(pct>0));
+  if(pct>0)ko.textContent='Offer price after '+pct+'% '+(occName()||'festive')+' discount: '+money(offer);
+  const row=(a,b,c)=>`<div class="flex justify-between${c||''}"><span>${a}</span><span>${b}</span></div>`;
+  $('breakdown').innerHTML=row('Gross profit'+(pct>0?' (on offer price)':''),money(gross))+row('− Shipping',money(80))+row('− Packaging',money(40))
+    +($('gstBuf').checked?row('− GST buffer (3%)',money(gst)):'')
+    +row('In-hand net profit',money(net),' font-semibold text-emerald-400 border-t border-slate-700 mt-1 pt-1');
+  updateCaption();
+}
+$('chips').addEventListener('click',e=>{
+  const b=e.target.closest('.chip');if(!b)return;
+  document.querySelectorAll('#chips .chip').forEach(c=>c.classList.remove('on'));
+  b.classList.add('on');margin=parseFloat(b.dataset.m);$('customM').value='';pricing();
+});
+$('customM').addEventListener('input',()=>{
+  const v=parseFloat($('customM').value);
+  document.querySelectorAll('#chips .chip').forEach(c=>c.classList.remove('on'));
+  margin=isNaN(v)?0:v;pricing();
+});
+$('cost').addEventListener('input',pricing);
+$('gstBuf').addEventListener('change',pricing);
+
+/* ---------- Caption ---------- */
+function occName(){return occ==='diwali'?'Diwali':occ==='custom'?($('customName').value.trim()||'Special'):'';}
+function occLabel(){return occ==='diwali'?'Diwali Special Offer':occ==='custom'?occName()+' Special Offer':'';}
+function buildCaption(){
+  const pct=festPct(), n=occName(), have=calc.sell>0;
+  const P=have?priceTxt(Math.round(calc.offer*100)/100):'[SYNCED_PRICE]';
+  const MRP=have?priceTxt(Math.round(calc.sell*100)/100):'[SYNCED_PRICE]';
+  const st=$('bState').value;
+  const ship=st==='Maharashtra'?'🚚 महाराष्ट्रात Free Shipping ✅':'📦 '+st+' साठी Shipping Charges ₹100/- लागू.';
+  const body='प्रत्येक खास क्षणासाठी सुंदर डिझाइन्स आणि स्टायलिश दागिन्यांची खास निवड. ✨';
+  let head='💎✨ RK JWELLERY ✨💎', greet='तुमच्या सौंदर्यात भर घालणारे आकर्षक दागिने आणि नवीन कलेक्शन! 👑💛';
+  let price='💰 खास ऑफर किंमत: ₹'+P+'/- फक्त!';
+  let tags='#RKJWELLERY #NewCollection #JewelleryLove #LatestDesigns #MarathiBusiness';
+  const sale=pct>0?'\n🎁 '+pct+'% सूट — MRP ₹'+MRP+'/-':'';
+  if(occ==='diwali'){
+    head='🪔✨ RK JWELLERY ✨🪔';
+    greet='🪔 शुभ दीपावली! तुमच्या घरी सुख, समृद्धी आणि आनंदाचा प्रकाश येवो! ✨\n\nदिवाळीनिमित्त आकर्षक दागिन्यांचे नवीन कलेक्शन — या सणाला तुमच्या सौंदर्याला द्या सोन्यासारखी झळाळी! 👑💛';
+    price='🪔 दिवाळी स्पेशल ऑफर किंमत: ₹'+P+'/- फक्त!'+sale;
+    tags+=' #Diwali #DiwaliOffer #ShubhDipawali';
+  }else if(occ==='custom'){
+    head='🎉✨ RK JWELLERY ✨🎉';
+    greet='🎉 '+n+' निमित्त हार्दिक शुभेच्छा! ✨\n\n'+n+' स्पेशल दागिन्यांचे नवीन कलेक्शन! 👑💛';
+    price='🎉 '+n+' स्पेशल ऑफर किंमत: ₹'+P+'/- फक्त!'+sale;
+    tags+=' #'+n.replace(/[^\p{L}\p{N}]+/gu,'');
+  }else if(occ==='off'){
+    price='💰 किंमत: ₹'+P+'/- फक्त.';
+  }
+  return [head,'',greet,'',body,'',price,'💖 नवीन कलेक्शन पाहण्यासाठी आमच्या पेजला Follow करा.','📩 तुमची आवडती डिझाइन ऑर्डर करण्यासाठी DM करा.','',ship,'','👑 RK JWELLERY — तुमच्या स्टाइलची खास ओळख! 💎','',tags].join('\n');
+}
+function capHint(){
+  $('capHint').textContent=capDirty?'Manual edits — auto-sync paused.':'Auto-synced with price, occasion and delivery state.';
+  $('capReset').classList.toggle('hidden',!capDirty);
+}
+function updateCaption(force){
+  if(capDirty&&!force)return;
+  if(force)capDirty=false;
+  $('caption').value=buildCaption();capHint();
+}
+$('caption').addEventListener('input',()=>{capDirty=true;capHint();});
+$('capReset').onclick=()=>{updateCaption(true);toast('Caption re-synced');};
+
+function banner(){
+  const l=occLabel(),b=$('occBanner');
+  b.textContent=l?(occ==='diwali'?'🪔 ':'🎉 ')+l:'';b.classList.toggle('hidden',!l);
+}
+function refresh(){banner();pricing();totals();}
+$('occ').addEventListener('click',e=>{
+  const b=e.target.closest('.chip');if(!b)return;
+  document.querySelectorAll('#occ .chip').forEach(c=>c.classList.toggle('on',c===b));
+  occ=b.dataset.o;
+  const hasDisc=occ==='diwali'||occ==='custom';
+  $('occExtra').classList.toggle('hidden',!hasDisc);
+  $('customWrap').classList.toggle('hidden',occ!=='custom');
+  if(hasDisc&&!$('festPct').dataset.t)$('festPct').value=occ==='diwali'?10:0;
+  capDirty=false;refresh();
+});
+$('customName').addEventListener('input',refresh);
+$('festPct').addEventListener('input',()=>{$('festPct').dataset.t=1;refresh();});
+$('copyBtn').onclick=async()=>{
+  const t=$('caption').value;
+  try{await navigator.clipboard.writeText(t);}
+  catch(e){$('caption').select();document.execCommand('copy');}
+  toast('Caption copied');
+};
+$('waBtn').onclick=()=>window.open('https://wa.me/?text='+encodeURIComponent($('caption').value),'_blank','noopener');
+
+/* ---------- Invoice ---------- */
+let items=[{name:'',hsn:'7117',qty:1,price:0}];
+$('bState').innerHTML=$('destState').innerHTML=STATES.map(s=>`<option${s==='Maharashtra'?' selected':''}>${s}</option>`).join('');
+const today=new Date();
+$('invDate').value=today.toISOString().slice(0,10);
+$('invNo').value='RK-'+today.toISOString().slice(2,10).replace(/-/g,'')+'-'+String(Math.floor(Math.random()*900)+100);
+
+function renderRows(){
+  $('rows').innerHTML=items.map((it,i)=>`<tr data-i="${i}">
+    <td><input class="iv" data-f="name" value="${esc(it.name)}" placeholder="Item name / description" aria-label="Item name"></td>
+    <td><input class="iv" data-f="hsn" value="${esc(it.hsn)}" aria-label="HSN code"></td>
+    <td><input class="iv" data-f="qty" type="number" min="0" step="any" value="${it.qty}" aria-label="Quantity"></td>
+    <td><input class="iv" data-f="price" type="number" min="0" step="any" value="${it.price||''}" placeholder="0.00" aria-label="Unit price"></td>
+    <td class="text-right amt" data-noexport-style>${money(it.qty*it.price)}</td>
+    <td class="noprint" data-noexport><button class="rm text-red-600" aria-label="Remove item" title="Remove item"><i class="fa-solid fa-trash"></i></button></td></tr>`).join('');
+  totals();
+}
+function totals(){
+  const sub=items.reduce((s,i)=>s+(+i.qty||0)*(+i.price||0),0);
+  const pct=festPct(), fest=sub*pct/100;
+  const manual=Math.min(Math.max(parseFloat($('disc').value)||0,0),sub-fest);
+  const disc=fest+manual;
+  const ship=$('bState').value==='Maharashtra'?0:100;
+  const taxable=sub-disc, tax=$('gstOn').checked?taxable*0.03:0;
+  const grand=taxable+ship+tax;
+  $('rFest').style.display=fest>0?'':'none';
+  $('lFest').textContent=(occName()||'Festive')+' discount ('+pct+'%)';
+  $('tFest').textContent='− '+money(fest);
+  $('tSub').textContent=money(sub);
+  $('tShip').innerHTML=ship?money(ship):'₹0.00 <span style="background:#047857;color:#fff;padding:1px 6px;border-radius:3px;font-size:10px;font-weight:600">FREE SHIPPING</span>';
+  $('shipNote').textContent=ship?'(outside Maharashtra)':'(Maharashtra)';
+  $('tTax').textContent=$('gstOn').checked?money(tax):'—';$('tGrand').textContent=money(grand);
+  const fb=$('freeBadge');
+  fb.textContent=ship?'Shipping ₹100 applies':'Free Shipping';
+  fb.style.background=ship?'#92400e':'#047857';fb.style.color='#fff';
+  return {sub,fest,disc,ship,tax,grand};
+}
+$('rows').addEventListener('input',e=>{
+  const tr=e.target.closest('tr');if(!tr||!e.target.dataset.f)return;
+  const it=items[+tr.dataset.i],f=e.target.dataset.f;
+  it[f]=(f==='qty'||f==='price')?(parseFloat(e.target.value)||0):e.target.value;
+  tr.querySelector('.amt').textContent=money(it.qty*it.price);totals();
+});
+$('rows').addEventListener('click',e=>{
+  const b=e.target.closest('.rm');if(!b)return;
+  if(items.length===1){items[0]={name:'',hsn:'7117',qty:1,price:0};}
+  else items.splice(+b.closest('tr').dataset.i,1);
+  renderRows();
+});
+$('addRow').onclick=()=>{items.push({name:'',hsn:'7117',qty:1,price:0});renderRows();};
+['disc','gstOn'].forEach(id=>$(id).addEventListener(id==='disc'?'input':'change',totals));
+function onState(src){$('bState').value=src.value;$('destState').value=src.value;totals();updateCaption();}
+$('bState').addEventListener('change',()=>onState($('bState')));
+$('destState').addEventListener('change',()=>onState($('destState')));
+
+$('syncBtn').onclick=()=>{
+  if(!(calc.sell>0)){toast('Enter a cost price first');return;}
+  const p=Math.round(calc.sell*100)/100;
+  items[0].price=p;renderRows();updateCaption(true);
+  toast('Price '+money(p)+' applied to invoice & caption');
+};
+
+/* ---------- Export ---------- */
+function data(){
+  const t=totals();
+  return {no:$('invNo').value,date:$('invDate').value,
+    seller:{name:'RK JEWELLERY',addr:$('sAddr').value,phone:$('sPhone').value,gst:$('sGst').value},
+    buyer:{name:$('bName').value,phone:$('bPhone').value,addr:$('bAddr').value,city:$('bCity').value,state:$('bState').value,pin:$('bPin').value},
+    items:items.map(i=>({name:i.name,hsn:i.hsn,qty:+i.qty||0,price:+i.price||0,amt:(+i.qty||0)*(+i.price||0)})),
+    gstOn:$('gstOn').checked,t};
+}
+const fname=(d,ext)=>'RK-Invoice-'+(d.no||'draft').replace(/[^\w-]/g,'_')+'.'+ext;
+function download(blob,name){
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;
+  document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1000);
+}
+$('printBtn').onclick=()=>window.print();
+$('pdfBtn').onclick=()=>{
+  if(typeof html2pdf==='undefined'){toast('PDF library unavailable offline — using Print');window.print();return;}
+  const el=$('invoice'),d=data();
+  el.classList.add('pdf-mode');toast('Preparing PDF…');
+  html2pdf().set({margin:0,filename:fname(d,'pdf'),image:{type:'jpeg',quality:.98},
+    html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff',scrollX:0,scrollY:0,windowWidth:794},
+    jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},pagebreak:{mode:['avoid-all']}})
+   .from(el).save().then(()=>toast('PDF downloaded'))
+   .catch(()=>{toast('PDF failed — try Print');})
+   .finally(()=>el.classList.remove('pdf-mode'));
+};
+$('xlsBtn').onclick=()=>{
+  if(typeof XLSX==='undefined'){toast('Excel library unavailable offline');return;}
+  const d=data(),wb=XLSX.utils.book_new();
+  const ws1=XLSX.utils.aoa_to_sheet([
+    ['PURCHASE ORDER / BILL OF SUPPLY'],[],['Invoice no.',d.no],['Date',d.date],['Occasion',occLabel()||'None'],
+    ['Seller',d.seller.name],['Seller address',d.seller.addr],['Seller contact',d.seller.phone],['GSTIN',d.seller.gst],[],
+    ['Subtotal',d.t.sub],['Discount',d.t.disc],['Shipping',d.t.ship],['GST 3%',d.gstOn?d.t.tax:0],['Grand total',d.t.grand]]);
+  ws1['!cols']=[{wch:22},{wch:34}];
+  const ws2=XLSX.utils.aoa_to_sheet([['Field','Value'],['Name',d.buyer.name],['Phone',d.buyer.phone],['Address',d.buyer.addr],['City',d.buyer.city],['State',d.buyer.state],['PIN',d.buyer.pin]]);
+  ws2['!cols']=[{wch:14},{wch:40}];
+  const rows=[['#','Item','HSN','Qty','Unit price (₹)','Amount (₹)']];
+  d.items.forEach((i,n)=>rows.push([n+1,i.name,i.hsn,i.qty,i.price,i.amt]));
+  rows.push([],['','','','','Subtotal',d.t.sub],['','','','','Discount',-d.t.disc],['','','','','Shipping',d.t.ship],['','','','','GST 3%',d.gstOn?d.t.tax:0],['','','','','Grand total',d.t.grand]);
+  const ws3=XLSX.utils.aoa_to_sheet(rows);ws3['!cols']=[{wch:5},{wch:36},{wch:10},{wch:8},{wch:16},{wch:16}];
+  XLSX.utils.book_append_sheet(wb,ws1,'Invoice');XLSX.utils.book_append_sheet(wb,ws2,'Customer');XLSX.utils.book_append_sheet(wb,ws3,'Items');
+  XLSX.writeFile(wb,fname(d,'xlsx'));toast('Excel downloaded');
+};
+$('docBtn').onclick=()=>{
+  const d=data(),td='style="border:1px solid #999;padding:6px"';
+  const html=`<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><title>${esc(d.no)}</title>
+<style>@page{size:A4;margin:15mm}body{font-family:Calibri,Arial,sans-serif;font-size:11pt}table{border-collapse:collapse;width:100%}</style></head><body>
+<h2 style="text-align:center;background:#D4AF37;padding:8px;margin:0">PURCHASE ORDER / BILL OF SUPPLY</h2>
+<p>Invoice no.: <b>${esc(d.no)}</b> &nbsp;&nbsp; Date: <b>${esc(d.date)}</b>${occLabel()?' &nbsp;&nbsp; Campaign: <b>'+esc(occLabel())+'</b>':''}</p>
+<table><tr><td ${td} width="50%"><b>SELLER</b><br><b>RK JEWELLERY</b><br>${esc(d.seller.addr)}<br>Contact: ${esc(d.seller.phone)}<br>GSTIN: ${esc(d.seller.gst)}</td>
+<td ${td}><b>BUYER</b><br>${esc(d.buyer.name)}<br>${esc(d.buyer.phone)}<br>${esc(d.buyer.addr)}<br>${esc(d.buyer.city)}, ${esc(d.buyer.state)} ${esc(d.buyer.pin)}</td></tr></table><br>
+<table><tr style="background:#1f2937;color:#F5D77A"><th ${td}>#</th><th ${td}>Item</th><th ${td}>HSN</th><th ${td}>Qty</th><th ${td}>Unit price (₹)</th><th ${td}>Amount (₹)</th></tr>
+${d.items.map((i,n)=>`<tr><td ${td}>${n+1}</td><td ${td}>${esc(i.name)}</td><td ${td}>${esc(i.hsn)}</td><td ${td}>${i.qty}</td><td ${td} align="right">${money(i.price)}</td><td ${td} align="right">${money(i.amt)}</td></tr>`).join('')}
+</table><br>
+<table style="width:50%;margin-left:50%"><tr><td ${td}>Subtotal</td><td ${td} align="right">${money(d.t.sub)}</td></tr>
+<tr><td ${td}>Shipping</td><td ${td} align="right">${money(d.t.ship)}</td></tr>
+<tr><td ${td}>Discount</td><td ${td} align="right">− ${money(d.t.disc)}</td></tr>
+<tr><td ${td}>GST 3%</td><td ${td} align="right">${d.gstOn?money(d.t.tax):'—'}</td></tr>
+<tr style="background:#1f2937;color:#F5D77A"><td ${td}><b>GRAND TOTAL</b></td><td ${td} align="right"><b>${money(d.t.grand)}</b></td></tr></table>
+<p><b>Terms &amp; conditions</b><br>1. Goods once sold will not be taken back.<br>2. Free shipping within Maharashtra; ₹100 flat elsewhere.<br>3. Payment is due in full before dispatch.<br>4. Subject to Shirpur jurisdiction.</p>
+<p style="text-align:right"><br><br>_____________________<br><b>Authorized signatory</b></p></body></html>`;
+  download(new Blob(['\ufeff',html],{type:'application/msword'}),fname(d,'doc'));toast('Word document downloaded');
+};
+
+const SW_CODE=`const C='rk-jewellery-v1';
+self.addEventListener('install',()=>self.skipWaiting());
+self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!==C).map(x=>caches.delete(x)))).then(()=>self.clients.claim())));
+self.addEventListener('fetch',e=>{
+  if(e.request.method!=='GET')return;
+  e.respondWith(fetch(e.request).then(r=>{const cp=r.clone();caches.open(C).then(c=>c.put(e.request,cp)).catch(()=>{});return r;})
+    .catch(()=>caches.match(e.request).then(m=>m||caches.match(self.registration.scope))));
+});`;
+$('swBtn').onclick=()=>{download(new Blob([SW_CODE],{type:'text/javascript'}),'sw.js');toast('sw.js saved — place it beside this file, serve over https/localhost, reload');};
+
+refresh();renderRows();
+})();
+</script>
+</body>
+</html>
